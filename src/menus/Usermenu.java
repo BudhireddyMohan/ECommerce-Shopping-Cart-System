@@ -130,7 +130,7 @@ public class Usermenu {
 				+ "7. Place Order\r\n"
 				+ "8. Order History\r\n"
 				+ "9. My Profile\r\n"
-				+ "10. Logout\r\n"s
+				+ "10. Logout\r\n"
 				+ "\r\n"
 				+ "Enter Choice:");
 	}
