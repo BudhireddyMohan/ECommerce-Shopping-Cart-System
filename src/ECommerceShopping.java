@@ -33,7 +33,7 @@ public class ECommerceShopping {
 
         while (t) {
 
-            // TRY-CATCH INSIDE WHILE
+           
             try {
 
                 applicationstart();
@@ -112,7 +112,7 @@ public class ECommerceShopping {
                         break;
                     }
 
-                    // INVALID OPTION
+                   
                     default: {
 
                         System.out.println(
