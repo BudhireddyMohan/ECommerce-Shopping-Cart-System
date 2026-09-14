@@ -46,7 +46,7 @@ public class Products implements Serializable {
 	
 	
 	public Products(int productid, String productname, String category, int price, int stock) {
-		super();
+	
 		this.productid = productid;
 		this.productname = productname;
 		this.category = category;
@@ -60,6 +60,7 @@ public class Products implements Serializable {
 		return "Products [productid=" + productid + ", productname=" + productname + ", category=" + category
 				+ ", price=" + price + ", stock=" + stock + "]";
 	}
+	
 	
 	
 }

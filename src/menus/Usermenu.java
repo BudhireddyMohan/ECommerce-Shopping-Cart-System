@@ -3,7 +3,6 @@ package menus;
 import java.util.Scanner;
 
 import exceptions.GlobelExceptionHandler;
-import fileHandlind.FiledataHandling;
 //import Context.ApplicationContext;
 import models.Users;
 import services.CartServices;
@@ -15,8 +14,7 @@ import services.UserServices;
 
 public class Usermenu {
 	
-	public Usermenu() {
-	}
+
 	
 	
 	//------------object
@@ -29,7 +27,7 @@ public class Usermenu {
 	UserServices userservices;
 	GlobelExceptionHandler g=new GlobelExceptionHandler();
 		    
-	public Usermenu(FiledataHandling filehandling, ProductsServices productservices2, CartServices cartservices2,
+	public Usermenu( ProductsServices productservices2, CartServices cartservices2,
 			OrderServices orderservices2, UserServices userservices) {
 		this.productservices=productservices2;
 		this.orderservices=orderservices2;
@@ -134,8 +132,6 @@ public class Usermenu {
 				+ "\r\n"
 				+ "Enter Choice:");
 	}
-
-
 
 
 }

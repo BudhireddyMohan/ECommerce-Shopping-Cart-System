@@ -1,42 +1,45 @@
 package services;
 
+import java.security.SecureRandom;
+import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Optional;
 import java.util.Scanner;
 
+import Repository.DAOs.UserDAO;
 import exceptions.GlobelExceptionHandler;
 import exceptions.IncorrectCredits;
 import exceptions.UserExitsAlready;
-import fileHandlind.FiledataHandling;
 import models.Users;
 
 public class UserServices {
 	
-	ArrayList<Users> users=new ArrayList<Users>();
-	public Users currentuser;
-	public static String role;
-	
-	
-	FiledataHandling filehandle;
-	
 
-	public UserServices(FiledataHandling filehandling) {
-		this.filehandle=filehandling;
-		this.users=filehandle.loaddata("Users.dta",users);
+	public Users currentuser;
+	
+	
+	//objects
+	
+	GlobelExceptionHandler globelexceptionhandler;
+	UserDAO userdao;
+	
+	
+	
+	public UserServices(GlobelExceptionHandler globalhandler,UserDAO userdao) {
+		
+		this.globelexceptionhandler=globalhandler;
+		this.userdao=userdao;
 }
 
-	//----------------- objects
-	GlobelExceptionHandler globelexceptionhandler=new GlobelExceptionHandler();
-
-
+	
 Scanner sc=new Scanner(System.in);
 
 
 //---------------------------generate id
-	public int generateid() {
-		if(users.size()==0) {
-			return 1;
-		}
-		return users.get(users.size()-1).getUserid()+1;
+	public static int generateid() {
+		
+		 SecureRandom random = new SecureRandom();
+		    return random.nextInt(Integer.MAX_VALUE);
 	}
 	
 //-------------------------MyProfile
@@ -53,13 +56,13 @@ Scanner sc=new Scanner(System.in);
 	
 //------------------------register 	
 	
-	public void Register(){
+	public void Register() throws UserExitsAlready,SQLException{
 		
 		System.out.println("=========================\r\n"
 				+ "Register\r\n"
 				+ "=========================");
-		System.out.println("username : ");
-	    String username=sc.nextLine();
+		System.out.println("email : : ");
+	    String email=sc.nextLine();
 	    System.out.println("password : ");
 	    String password=sc.nextLine();
 	    System.out.println("phonenumber");
@@ -69,15 +72,13 @@ Scanner sc=new Scanner(System.in);
 	    System.out.println("Address : ");
 	    String Address= sc.nextLine();
 	  
-	    if(registervaildation(username,phonenumber))  {
-		    Users u=new Users(generateid(),username,password,phonenumber,Address,"user");
-		    users.add(u);
-		    filehandle.savedata("Users.dta",users);
+	    if(userdao.RegistrationValidation(email, phonenumber))  {
+		    Users u=new Users(generateid(),email,password,phonenumber,Address,"USER");
+		    userdao.saveregisterdata(u);
+		    
 		    
 	    }else {
-	    	
-	    	throw new UserExitsAlready("User Exits Already");
-	    	
+	    	 new UserExitsAlready("User Exits Already");
 	    }    
 	}
 	
@@ -85,24 +86,21 @@ Scanner sc=new Scanner(System.in);
 	
 	
 	//-------------------------login
-	public Users login(String username,String password) {
+	
+	public Users login(String username,String password) throws SQLException,IncorrectCredits {
 		Users CurrentUser=new Users(0,"admin","admin",000,"hyd","admin");
 		if(username.equals("admin") && password.equals("admin")) return CurrentUser;
-		else {
-			for(Users ele:users) {
-				if(ele.getName().equals(username) && ele.getPassword().equals(password)) return ele;
-			}
-		}
-		throw new IncorrectCredits("Incorrect Credits");
+			Optional<Users> userdetails=userdao.logincheck(username,password);
+		return userdetails.orElseThrow(()->new IncorrectCredits("Incorrect Credits"));	
 		
-
+		
 	}
 	
 	
 	
 	
 	//------------------------------ViewUsers
-	public void ViewUsers() {
+	public void ViewUsers() throws SQLException {
 		
 		
 		System.out.println("==============================================");
@@ -110,8 +108,9 @@ Scanner sc=new Scanner(System.in);
 		System.out.println("==============================================");
 		System.out.printf("%-6s %-14s %-14s %s%n", "ID", "Username", "Phone", "Address");
 		System.out.println("------------------------------------------------");
-
-		for (Users ele : users) {
+        ArrayList<Users> al= userdao.GetAllUsers() ;
+      
+		for (Users ele : al) {
 		        System.out.printf("%-6s %-14s %-14s %s%n", 
 		            String.valueOf(ele.getUserid()), 
 		            String.valueOf(ele.getName()), 
@@ -127,14 +126,6 @@ Scanner sc=new Scanner(System.in);
 	
 	
 	
-	//---------------------register vaildation
-	public boolean registervaildation(String username,Long phonenumber){
-		for(Users u:users) {
-			if(u.getName().equals(username) && u.getPhonenumber()==phonenumber) return false ;
-		}
-		
-	return true;
-	}
 }
 
 

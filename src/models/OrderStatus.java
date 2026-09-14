@@ -1,6 +1,18 @@
 package models;
 
 public enum OrderStatus {
-  ORDERED,
-  DELIVERED
+	
+	
+	
+  PENDING,
+  DELIVERED,
+  SHIPPED,
+  CONFIRMED
+  
+
+  
+  
 }
+
+
+

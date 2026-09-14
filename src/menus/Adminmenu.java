@@ -92,7 +92,7 @@ public class Adminmenu {
                     }
 
                     case 10: {
-                        orderservices.viewAllPendingOrders();
+                        orderservices.viewAllOrdersByStatus();
                         break;
                     }
 
@@ -116,6 +116,10 @@ public class Adminmenu {
         sc.close();
     }
 
+    
+    
+    
+    
     public void displaymenu() {
 
         System.out.println();

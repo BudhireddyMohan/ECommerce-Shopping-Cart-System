@@ -3,6 +3,7 @@ package models;
 import java.io.Serializable;
 
 public class Users implements Serializable {
+	
   private int userid;
   private String name;
   private String password;
@@ -10,7 +11,7 @@ public class Users implements Serializable {
   private String address;
   private String role;
   
-  
+ 
   
   
 public Users(int userid, String name, String password, long phonenumber, String address,String role) {

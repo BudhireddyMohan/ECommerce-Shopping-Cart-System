@@ -19,6 +19,17 @@ public class ECommerceShopping {
     }
 
     public static void main(String[] args) {
+    	// 1. Wrap the original system input stream so close() commands are completely ignored
+    	java.io.InputStream uncloseableInputStream = new java.io.FilterInputStream(System.in) {
+    	    @Override
+    	    public void close() throws java.io.IOException {
+    	        // Do absolutely nothing! This blocks the stream from shutting down.
+    	    }
+    	};
+
+    	// 2. Override Java's default System.in with our uncloseable wrapper
+    	System.setIn(uncloseableInputStream);
+
 
         GlobelExceptionHandler g = new GlobelExceptionHandler();
 
@@ -30,17 +41,13 @@ public class ECommerceShopping {
         Scanner sc = new Scanner(System.in);
 
         boolean t = true;
-
         while (t) {
 
-           
+        	
             try {
 
                 applicationstart();
-
-                int choice = sc.nextInt();
-                sc.nextLine();
-
+                int choice =  Integer.parseInt(sc.nextLine());
                 switch (choice) {
 
                     // REGISTER
@@ -79,7 +86,7 @@ public class ECommerceShopping {
 
                             switch (currentuser.getRole()) {
 
-                                case "user": {
+                                case "USER": {
 
                                     objectcontainer
                                             .getUsermenu()
@@ -106,9 +113,7 @@ public class ECommerceShopping {
                     case 3: {
 
                         System.out.println("Thank you........");
-
                         t = false;
-
                         break;
                     }
 
@@ -118,8 +123,6 @@ public class ECommerceShopping {
                         System.out.println(
                                 "enter correct option"
                         );
-
-                        break;
                     }
                 }
 
@@ -129,7 +132,5 @@ public class ECommerceShopping {
                 g.handler(e);
             }
         }
-
-        sc.close();
     }
 }

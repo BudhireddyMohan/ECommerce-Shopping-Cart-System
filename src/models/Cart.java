@@ -1,29 +1,17 @@
 package models;
 
 import java.io.Serializable;
-import java.util.ArrayList;
 
 public class Cart implements Serializable{
 
 	private int cartid;
 	private int userid;
-	private ArrayList<CartItems> cartitems;
 	
 	
-	
-	public ArrayList<CartItems> getCartitems() {
-		return cartitems;
-	}
-
-	public void setCartitems(ArrayList<CartItems> cartitems) {
-		this.cartitems = cartitems;
-	}
-	
-	public Cart(int cartid, int userid, ArrayList<CartItems> cartitems) {
+	public Cart(int cartid, int userid) {
 		
 		this.cartid = cartid;
 		this.userid = userid;
-		this.cartitems = cartitems;
 	}
 
 	public int getCartid() {
@@ -43,8 +31,10 @@ public class Cart implements Serializable{
 
 	@Override
 	public String toString() {
-		return "Cart [cartid=" + cartid + ", userid=" + userid + ", cartitems=" + cartitems + "]";
+		return "Cart [cartid=" + cartid + ", userid=" + userid + "]";
 	}
+
+	
 	
 	
 	

@@ -1,46 +1,39 @@
 package services;
 
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Optional;
 import java.util.Scanner;
 
+import Repository.DAOs.ProductsDAO;
 import exceptions.GlobelExceptionHandler;
 import exceptions.InCorrectProduct;
 import exceptions.ProductAlreadyExits;
-import fileHandlind.FiledataHandling;
 import models.Products;
 
 public class ProductsServices {
 	
-	ArrayList<Products> products=new ArrayList<>();
-	FiledataHandling filehandling;
 	
 	
+	////------------objects 
+
+	ProductsDAO productsDAo;
+	GlobelExceptionHandler globelhandler;
 	
 		
-	public ProductsServices(FiledataHandling filehandling2) {
-		this.filehandling=filehandling2;
-		this.products=filehandling.loaddata("Products.dta", products);
-
+	public ProductsServices(GlobelExceptionHandler globelhandler,ProductsDAO productsDAo) {
+	
+		this.globelhandler=globelhandler;
+		this.productsDAo=productsDAo;
 	}
-
-
-	//------------objects 
-	
-	public ProductsServices() {
-		// TODO Auto-generated constructor stub
-	}
-
-
-	GlobelExceptionHandler globelhandler=new GlobelExceptionHandler();
-	
-	
 	
 	
 	Scanner sc =new Scanner(System.in);
 	
 	
 	//-------------------add product
-	public void addproduct() {
+	public void addproduct() throws SQLException,ProductAlreadyExits {
 		
 		System.out.println("adding product");
 		System.out.println("==================");
@@ -51,9 +44,12 @@ public class ProductsServices {
 			System.out.println("Productname should not be Empty");
 			productname=sc.nextLine();
 		}
-		if(ProductExitsOrNot(productname)) {
-			throw new ProductAlreadyExits("Product Already Exits");
-		}
+		
+		
+		if(productsDAo.ProductExitsOrNotSearchByName(productname).isPresent()) 
+			 new ProductAlreadyExits("Product Already Exits");
+		
+		
 		System.out.println("enter category");
 		String category=sc.nextLine();
 		while(category.equals("")) {
@@ -79,33 +75,25 @@ public class ProductsServices {
 			sc.nextLine();
 		}
 		
-		Products p=new Products(generateid(),  productname,  category,  price, stock);
-		products.add(p);
-		filehandling.savedata("Products.dta", products);
+		
+		productsDAo.Saveproduct(new Products(UserServices.generateid(),  productname,  category,  price, stock));
+		
 		System.out.println("==============================\r\n"
-				+ "Product Added Successfully!\r\n"
+				+ "Product Added Successfully To DB!\r\n"
 				+ "==============================");
-		
-		
 	}
 	
 	
 //-------------------------update Products
-	public void updateProduct() {
+	public void updateProduct() throws InCorrectProduct,SQLException{
 		System.out.println("==============================\r\n"
 				+ "        Update Product\r\n"
 				+ "==============================\r\n");
 		
 		System.out.println("enter the product id u wanted to update");
-		int productid=sc.nextInt();
-		sc.nextLine();
-		Products updateproduct=DoesProductsContaInProductid(productid);
+		int productid=  Integer.parseInt(sc.nextLine());
 		
-		if(updateproduct==null) {
-			throw new InCorrectProduct("entered In Correct Product Id");
-			
-		}
-		int index=products.indexOf(updateproduct);
+		Products updateproduct=GetProduct(productid);
 		System.out.println("Product details : ");
 		System.out.println(updateproduct.toString());
 		System.out.println("==============================\r\n"
@@ -160,7 +148,7 @@ public class ProductsServices {
 				num=sc.nextInt() ;
 				sc.nextLine();
 			}
-			updateproduct.setStock(num); ;
+			updateproduct.setStock(num); 
 			break;
 		}
 		case 5:{
@@ -171,10 +159,9 @@ public class ProductsServices {
 			System.out.println("enter correct option");
 		}
 		}
-		//set in arraylist
-		products.set(index, updateproduct);
-		System.out.println("updated product"+products.get(index).toString());
-		filehandling.savedata("Products.dta", products);
+		
+		productsDAo.updateproduct(updateproduct);
+		
 		System.out.println("==============================\r\n"
 				+ "Product Updated  Successfully!\r\n"
 				+ "==============================");
@@ -183,7 +170,7 @@ public class ProductsServices {
 	
 	
 //------------------------------------------------deleteproduct
-	public void deleteproduct() {
+	public void deleteproduct() throws SQLException,InCorrectProduct{
 		System.out.println("==============================\r\n"
 				+ "        Delete Product\r\n"
 				+ "==============================");
@@ -191,18 +178,13 @@ public class ProductsServices {
 		System.out.println("enter the product id to delete");
 		int id=sc.nextInt();
 		sc.nextLine();
-		Products deleteproduct=  DoesProductsContaInProductid(id);
-		if(deleteproduct==null) {
-			throw new InCorrectProduct("entered In Correct Product Id");
-			
-		}
+		GetProduct(id);
 		System.out.println("Are you sure you want to delete?  1- Yes 2- No");
 		int yesno=sc.nextInt();
 		sc.nextLine();
 		switch(yesno){
 		case 1:{
-			products.remove(products.indexOf(deleteproduct));
-			filehandling.savedata("Products.dta", products);
+			productsDAo.DeleteProduct(id);
 			System.out.println("==============================\r\n"
 					+ "        Delete Product Sucessfully\r\n"
 					+ "==============================");
@@ -214,46 +196,10 @@ public class ProductsServices {
 	
 	
 	
-	
-	
-	
 	//-----------------------------updatestock
-	public void updatestock(int productid,int orderquantity) {
-		for(int i=0;i<products.size();i++) {
-			
-			if(products.get(i).getProductid()==productid) {
-				//System.out.println("stock before update : "+ ele.getStock());
-				products.get(i).setStock(products.get(i).getStock()-orderquantity);
-				if(products.get(i).getStock()==0) {
-					products.remove(i);
-				}
-				filehandling.savedata("Products.dta", products);
-				return;
-			}
-			
-		}
+	public void updatestock(Connection con,int productid,int orderquantity) throws SQLException {
+		productsDAo.updatestockInProducts(con,productid,orderquantity);	
 	}
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
 	
 	
 	
@@ -262,12 +208,13 @@ public class ProductsServices {
 	
 	
 	
-	public void ViewAllProducts() {
+	public void ViewAllProducts() throws SQLException{
 	System.out.println("========================================\r\n"
 			+ "             ALL PRODUCTS\r\n"
 			+ "========================================");	
 	System.out.printf("%-5s %-18s %-14s %-10s %s%n", "ID", "Product Name", "Category", "Price", "Stock");
 	System.out.println("---------------------------------------------------------");
+	ArrayList<Products> products=productsDAo.GetAllProducts();
 	for (Products ele : products) {
 	    System.out.printf("%-5s %-18s %-14s %-10s %s%n", 
 	        String.valueOf(ele.getProductid()), 
@@ -283,7 +230,11 @@ public class ProductsServices {
 	
 //---------------------SearchProduct
 	
-	public void SearchProduct() {
+	
+	
+	
+	
+	public void SearchProduct() throws SQLException,InCorrectProduct{
 		System.out.println("==============================\r\n"
 				+ "       Search Product\r\n"
 				+ "==============================\r\n"
@@ -302,12 +253,7 @@ public class ProductsServices {
 			System.out.println("enter product Id");
 			int productid=sc.nextInt();
 			sc.nextLine();
-			Products pr=DoesProductsContaInProductid(productid);
-			if(pr==null) {
-				System.out.println("Product with ID "+productid+ " not found.");
-				return ;
-			}
-			System.out.println(pr.toString());
+			System.out.println( GetProduct(productid).toString());
 			break;
 		}
 		case 2:{
@@ -315,7 +261,9 @@ public class ProductsServices {
 			String name=sc.nextLine().trim().toLowerCase();
 			System.out.printf("%-5s %-18s %-14s %-10s %s%n", "ID", "Product Name", "Category", "Price", "Stock");
 			System.out.println("---------------------------------------------------------");
-			for (Products ele : products) {
+			Optional<ArrayList<Products>> products=productsDAo.ProductExitsOrNotSearchByName(name);
+			  ArrayList< Products> p=products.orElseThrow(()-> new InCorrectProduct("Products Not founded By the Name ")  );
+			for (Products ele : p) {
 			    if (ele != null && ele.getProductname() != null) {
 			        if (ele.getProductname().toLowerCase().contains(name)) {
 			            System.out.printf("%-5s %-18s %-14s %-10s %s%n", 
@@ -333,21 +281,21 @@ public class ProductsServices {
 		case 3:{
 			System.out.println("Search by Category");
 			String name=sc.nextLine().trim().toLowerCase();
-			String safeSearchName = (name == null) ? "" : name.trim().toLowerCase();
+			
 			System.out.printf("%-5s %-18s %-14s %-10s %s%n", "ID", "Product Name", "Category", "Price", "Stock");
 			System.out.println("---------------------------------------------------------");
-			for (Products ele : products) {
-			    if (ele != null && ele.getProductname() != null) {
-			        if (ele.getProductname().toLowerCase().contains(safeSearchName)) {
+			
+			Optional<ArrayList<Products>> products=productsDAo.GetByCategory(name);
+			ArrayList<Products> p=products.orElseThrow(()->  new InCorrectProduct("In correct Product category") );
+			System.out.println("p :  "+p);
+			for (Products ele : p) {			 
 			         System.out.printf("%-5s %-18s %-14s %-10s %s%n", 
 			                String.valueOf(ele.getProductid()), 
 			                String.valueOf(ele.getProductname()), 
 			                String.valueOf(ele.getCategory()), 
 			                String.valueOf(ele.getPrice()), 
 			                String.valueOf(ele.getStock())
-			            );
-			        }
-			    }
+			            );    
 			}
 			break;
 		}
@@ -364,51 +312,31 @@ public class ProductsServices {
 	
 	
 //-----------------------------GetProductStock
-	public int GetProductStock(int proid) {
-		for(Products ele: products) {
-			if(ele.getProductid()==proid) return ele.getStock();
-		}
-		return 0;
+	public int GetProductStock(int proid) throws SQLException {
+		Optional<Products> product= productsDAo.GetProduct(proid);
+		//return product.get().getStock();
+		return product.get().getStock();
 	}
+	
 	
 	
 	
 	
 //-------------------------DoesProductsContaInProductid
-	public Products DoesProductsContaInProductid(int productid) {
-		for(Products ele : products) {
-			if(productid==ele.getProductid()) return ele;
-		}
-		return null;
+	public Products GetProduct(int productid) throws SQLException,InCorrectProduct {
+		
+		Optional<Products> product= productsDAo.GetProduct(productid);
+		 return  product.orElseThrow(()->new InCorrectProduct("entered In Correct Product Id")); 
+		
 	}
 	
-//---------------------generate id
-	public int generateid() {
-		if(products.size()==0) return 1;
-		return products.get(products.size()-1).getProductid()+1;
-	}
+
 	
-//---------------------------------getproductprice
-	public int getproductprice(int proid) {
-		for(Products ele: products ) {
-			if(ele.getProductid()==proid) return ele.getPrice();	
-		}
-		return 0;
-	}
-	
-	
-	
-	
-///--------------------	Product Exits Or Not
-	public boolean ProductExitsOrNot(String productname) {
-		for(Products ele: products) {
-			if(ele.getProductname().equals(productname)) {
-				return true;
-			}
-		}
-		return false;
-	}
-//------------------getProductNane
-	
+//--------------------------------getproductprice
+	public int  getproductprice(int proid) throws SQLException,ProductAlreadyExits {	
+		Optional<Products> product= productsDAo.GetProduct(proid);
+		Products pro=product.orElseThrow(()-> new InCorrectProduct("Product Not Exists to get price"));
+	     return pro.getPrice();
+   }
 	
 }

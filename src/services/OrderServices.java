@@ -1,18 +1,24 @@
 package services;
 
+import java.security.SecureRandom;
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.time.LocalDate;
-import java.util.ArrayList;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
 import java.util.Scanner;
 
+import DTOs.AddToCartDto;
+import DTOs.OrderItemsDTOs;
+import Repository.DAOs.OrdersDAO;
+import Utlity.DatabaseTest;
 import exceptions.CartIsEmpty;
+import exceptions.DataBaseConnection;
 import exceptions.GlobelExceptionHandler;
-import fileHandlind.FiledataHandling;
-import models.Cart;
-import models.CartItems;
-import models.Order;
-import models.OrderItems;
+import exceptions.InCorrectProduct;
+import exceptions.InSuffecentStock;
 import models.OrderStatus;
-import models.Products;
 import models.Users;
 
 public class OrderServices {
@@ -20,23 +26,28 @@ public class OrderServices {
 	
 	LocalDate today = LocalDate.now();
 	 
-	ArrayList<Order> orderscollection=new ArrayList<>();
+	
 	
 	
 	//------------------objects
-	FiledataHandling filehandling;
+
 	ProductsServices productservices;
 	CartServices cartservices;
 	GlobelExceptionHandler exceptionhandler;
 	Scanner sc=new Scanner(System.in);
 	Users currentuser;
+	OrdersDAO ordersdao;
+	DatabaseTest database;
+	//Order_itemsDAO order_itemsdao;
 	
-	public OrderServices(FiledataHandling filehandling2,ProductsServices productservice, CartServices cartservices2,GlobelExceptionHandler exceptionhandler) {
+	public OrderServices(ProductsServices productservice, CartServices cartservices,GlobelExceptionHandler exceptionhandler,OrdersDAO ordersdao,DatabaseTest database) {
 		this.productservices=productservice;
-		this.cartservices=cartservices2;
-		this.filehandling=filehandling2;
-		this.orderscollection=filehandling.loaddata("Order.dta", orderscollection);
+		this.cartservices=cartservices;
+	
+	
 		this.exceptionhandler=exceptionhandler;
+		//this.order_itemsdao=order_itemsdao;
+		this.ordersdao=ordersdao;
 		}
 	
 	
@@ -45,69 +56,95 @@ public class OrderServices {
 
 
 
-	public void placeorder(Users currentuser) {
-		System.out.println("Place order");
-		Cart usercart= cartservices.UserExitInCartCollection(currentuser);
-		if(usercart==null) {
-			throw new CartIsEmpty("Cart Is Empty To Place Order");
-		}
-		// checking does the product suffent or not in cart and product stock
+	public void placeorder(Users currentuser) throws SQLException, InCorrectProduct,CartIsEmpty,InSuffecentStock,DataBaseConnection{
+		System.out.println("==============Place order===============");
+		
+		// show cartItems To User
 		cartservices.ViewCart(currentuser);
+		
+		
+		
+		
+		Optional<List<AddToCartDto>> cartitems=ordersdao.Addtocart(currentuser.getUserid());
+		
+		if(cartitems.isEmpty()) {System.out.println("To Place Order ! OOPs");return;}
+		
+
+		
+		//checking the stock is valid in products stock and cart stock
+		
+		for(AddToCartDto ele: cartitems.get()) {
+			
+		
+			if(ele.ciquantity()>ele.p_stock()) {
+				throw new InSuffecentStock("Stock is Insuffent to Place The Order");
+			}
+		}
+		
+		
+		
+		
+
 		System.out.println("Are U Sure To Place Order ?");
 		System.out.println("1. Yes");
 		System.out.println("2. No");
-		int option=sc.nextInt();
-		sc.nextLine();
+		int option= Integer.parseInt(sc.nextLine());
+	
 		while(option!=1 && option!=2) {
 			System.out.println("enter correct option : ");
-			option =sc.nextInt();
-			sc.nextInt();
+			 option= Integer.parseInt(sc.nextLine());
 		}
 		
+		if(option==2) return;
 		
-		switch(option) {
-		case 1:{
+		int order_id=generateid();
+		
+		Connection con=null;
+		try {
+		    con=database.getconnection();
+		    if(con==null) throw new DataBaseConnection("data base connection error");
+			con.setAutoCommit(false);
+			//Adding the Order in the Orders Table
+			ordersdao.save(con,order_id,currentuser.getUserid(),LocalDateTime.now(),OrderStatus.PENDING);
+		
 			
+			for(AddToCartDto ele:cartitems.get()) {
+				
 			
-			for(CartItems ele: usercart.getCartitems()) {
-				if(ele.getQuantity()>productservices.GetProductStock(ele.getProductid()))
-				{
-					System.out.println("ele.getQuantity()>productservices.GetProductStock(ele.getProductid()) : "+ ele.getQuantity() +productservices.GetProductStock(ele.getProductid()));
-					System.out.println(" Stock not Suffent ");
-					return;
-				}
+				//saving to order items
+				ordersdao.save(con,generateid(),order_id,ele.p_productname() ,ele.p_price() ,ele.ciquantity() );
+				
+				//updating the stock in products
+				productservices.updatestock(con,ele.ciproductid() , ele.p_stock()  -ele.ciquantity() );
+				
+				// Without Deleing the Cartitems we can not delete the cart because of forigen key, for this line (cartservices.Deletecart(currentuser.getUserid());)
+				cartservices.DeleteCart_Items(con,ele.cartid()  ,ele.ciproductid() );	
 			}
-						
-			ArrayList<OrderItems> a=new ArrayList<>();
 			
-			for(int i=0;i<usercart.getCartitems().size();i++) {
-				Products pro=productservices.DoesProductsContaInProductid(usercart.getCartitems().get(i).getProductid());
-				OrderItems orderitem=new OrderItems(pro.getProductname(),pro.getPrice(),usercart.getCartitems().get(i).getQuantity());
-				a.add(orderitem);
-			}
-			
-			for(CartItems ele: usercart.getCartitems()) {
-				productservices.updatestock(ele.getProductid(),ele.getQuantity());
-			}
+			// After the user ordered the cart will deleted
+			cartservices.Deletecart(con,currentuser.getUserid());
 			
 			
-			Order order=new Order(generateid(),usercart.getUserid(),today,OrderStatus.ORDERED,a);
-			orderscollection.add(order);
-			filehandling.savedata("Order.dta", orderscollection);
+			
 			
 			System.out.println("===============================================");
 			System.out.println("           Order Placed Sucessfully !           ");
-			System.out.println("=================================================");
-			System.out.println("orderscollection : "+ orderscollection);
-			
-			// remove cart from the user
-			
-			cartservices.RemovingCartFromUser(usercart.getCartid());
-			break;
-		}case 2:{
-			return;
-		}
-	
+			System.out.println("=================================================");	
+					
+		}catch(Exception e) {
+			if(con !=null) {
+				con.rollback();
+			}
+			throw e;
+		}finally{
+			try {
+				if(con!=null) {
+					con.setAutoCommit(true);
+				}
+			}catch(Exception e) {
+				e.printStackTrace();
+			}
+			con.close();
 		}
 		
 		
@@ -117,33 +154,31 @@ public class OrderServices {
 	
 	
 	//---------------------------Order History
-	public void OrderHistory(Users currentuser) {
+	public void OrderHistory(Users currentuser) throws SQLException {
 	    this.currentuser = currentuser;
 
 	    System.out.println();
 	    System.out.println("======================================================");
 	    System.out.println("                       ORDER HISTORY");
 	    System.out.println("======================================================");
-       //int totalamount = 0;
-	    for (Order ele : orderscollection) {
-
-	        if (ele.getUserid() == currentuser.getUserid()) {
-
+  
+	    Optional<List<OrderItemsDTOs>> orders=ordersdao.GetOrderItemsByOrderId(currentuser.getUserid());
+	    if(orders.isEmpty()) {
+	    	System.out.println("========== No Orders ===========");
+	    	return;
+	    }
+    
+	    for (OrderItemsDTOs e : orders.get()) {
 	            System.out.println();
 	            System.out.println("--------------------------------------");
-	            System.out.println(" Order ID      : " + ele.getOrderid());
-	            System.out.println(" Order Status  : " + ele.getStatus());
+	            System.out.println(" Order ID      : " + e.getOrderid());
+	            System.out.println(" Order Status  : " + e.getStatus());
 	            System.out.println("--------------------------------------");
-
-	            for (OrderItems e : ele.getOrderitems()) {
-
-	                System.out.println(" Product Name  : " + e.getProductname());
-	                System.out.println(" Price         : ₹" + e.getPrice());
-	                System.out.println(" Quantity      : " + e.getQuantity());  
-	                System.out.println("-----------------------------------");
-	                System.out.println("Total Amount : "+e.getPrice()* e.getQuantity());
-	            }
-	        }
+	            System.out.println(" Product Name  : " + e.getProductname());
+	            System.out.println(" Price         : ₹" + e.getPrice());
+	            System.out.println(" Quantity      : " + e.getQuantity());  
+	            System.out.println("-----------------------------------");
+	            System.out.println("Total Amount : "+e.getPrice()* e.getQuantity());
 	    }
         
 	    System.out.println("=======================================================");
@@ -152,122 +187,190 @@ public class OrderServices {
 	}
 	
 	
-	//---------------------------ViewAllOrders
-	public void ViewAllOrders() {
-		if(orderscollection.size()==0) {
-			System.out.println("=========== No Orders =======");
-			return;
-		}
-		System.out.println("==========================");
-		System.out.println("    All Orders ");
-		System.out.println("==========================");
-         int TotalAmount=0;
-		for(Order ele:orderscollection) {
-			System.out.println("Order Id : "+ele.getOrderid());
-			System.out.println("Order Date :"+ele.getOrderdate());
-			for(OrderItems e: ele.getOrderitems()) {
-				System.out.println("Product Name : "+e.getProductname()); 
-				System.out.println("Quantity  : "+e.getQuantity()); 
-				System.out.println("Product price : "+e.getPrice()); 
-				System.out.println("------------------------------------------");
-				System.out.println("sub Amount : "+e.getQuantity()*e.getPrice());
-				System.out.println("----------------------------------------");
-				TotalAmount+=e.getQuantity()*e.getPrice();
-				System.out.println("--------------------------------------------------");
-			}
-		}
+	
+	
+	
+	
+	
+	
+	
+	
+//---------------------------ViewAllOrders  (Admin operation)
+	
+	
+	public void ViewAllOrders() throws SQLException {
+		
+		 int TotalAmount=0;
+		
+		   Optional<List<OrderItemsDTOs>> orders=ordersdao.GetAllOrders();
+		   
+		    if(orders.isEmpty()) {
+		    	System.out.println("========== No Orders ===========");
+		    	return;
+		    }
+		    
+		    
+		    for (OrderItemsDTOs e : orders.get()) {
+		            System.out.println();
+		            System.out.println("--------------------------------------");
+		            System.out.println(" Order ID      : " + e.getOrderid());
+		            System.out.println(" Order Status  : " + e.getStatus());
+		            System.out.println("--------------------------------------");
+		                System.out.println(" Product Name  : " + e.getProductname());
+		                System.out.println(" Price         : ₹" + e.getPrice());
+		                System.out.println(" Quantity      : " + e.getQuantity());  
+		                System.out.println("-----------------------------------");
+		                System.out.println("Total Amount : "+e.getPrice()* e.getQuantity());
+		                System.out.println("----------------------------------------");
+						TotalAmount+=e.getQuantity()*e.getPrice();
+					System.out.println("--------------------------------------------------");
+		            
+		        
+		    }
 		System.out.println("----------------------------------------");
-		System.out.println("Total Amount : "+ TotalAmount);
+	    System.out.println("Total Amount : "+ TotalAmount);
 	}
 	
 
 	
 	
-	//------------------------------------------ViewOrderdetails
-	public void ViewOrderdetails() {
+	//------------------------------------------ViewOrderdetails  joins
+	public void ViewOrderdetails() throws SQLException {
 		System.out.println("==============================");
-		System.out.println("       Order Details ");
+		System.out.println("       Order Details "     );
 		System.out.println("===============================");
-		//ViewAllOrders();
+		ViewAllOrders();
 		System.out.println("enter the order id : ");
-		int orderid=sc.nextInt();
-		sc.nextLine();
-		int Totalamount=0;
-		for(Order ele:orderscollection) {
-			if(ele.getOrderid()==orderid) {
-				System.out.println("UserId : "+ele.getUserid());
-				System.out.println("Order Date"+ ele.getOrderdate());
-				for(OrderItems e: ele.getOrderitems()) {
-					System.out.println("Product Nmae : "+e.getProductname());
-					System.out.println("Quantity : "+e.getQuantity());
-					System.out.println("Price : "+e.getPrice());
-					System.out.println("Sub Total : "+e.getQuantity()*e.getPrice());
-					System.out.println("-----------------------------------------------------");
-					Totalamount+=e.getQuantity()*e.getPrice();
-				}
-				System.out.println("------------------------------------");
-				System.out.println("Total Amount : "+ Totalamount);
-				System.out.println("------------------------------------");
-				System.out.println("Order status : "+ ele.getStatus());
-				return;
-			}
+		
+		int orderid= Integer.parseInt(sc.nextLine());	
+		int TotalAmount=0;	
+		Optional<List<OrderItemsDTOs>> ordersitems= ordersdao.GetOrderItemsByOrderId(orderid);
+		if(ordersitems.isEmpty()) {
+			System.out.println("In correct Orderid ");
+			return;
 		}
+		
+		 for (OrderItemsDTOs e : ordersitems.get()) {
+	            System.out.println();
+	            System.out.println("--------------------------------------");
+	            System.out.println(" Order ID      : " + e.getOrderid());
+	            System.out.println(" Order Status  : " + e.getStatus());
+	            System.out.println("--------------------------------------");
+
+	           
+
+	                System.out.println(" Product Name  : " + e.getProductname());
+	                System.out.println(" Price         : ₹" + e.getPrice());
+	                System.out.println(" Quantity      : " + e.getQuantity());  
+	                System.out.println("-----------------------------------");
+	                System.out.println("Total Amount : "+e.getPrice()* e.getQuantity());
+	                System.out.println("----------------------------------------");
+					TotalAmount+=e.getQuantity()*e.getPrice();
+				System.out.println("--------------------------------------------------");
+	            
+	        
+	    }
+	System.out.println("----------------------------------------");
+ System.out.println("Total Amount : "+ TotalAmount);
+
 				
 	}
 	
 	
 	
 	//--------------------------------Develery All Orders
-	OrderStatus status;
-	public void DeveleryAllOrdersPendingOrders() {
+	
+	
+	
+	public void DeveleryAllOrdersPendingOrders() throws SQLException{
 		
-		boolean nopending=true;
-		for(int i=0;i<orderscollection.size();i++) {
-			nopending=false;
-			if(orderscollection.get(i).getStatus()==OrderStatus.ORDERED) {
-			      orderscollection.get(i).setStatus(OrderStatus.DELIVERED);
-			}
+		
+		Optional<List<OrderItemsDTOs>> orders=ordersdao.GetOrdersByStatus(OrderStatus.PENDING);
+		
+		if(orders.isEmpty()) {System.out.println("No Pending Orders "); return ;}
+		
+		for(OrderItemsDTOs ele: orders.get()) {
+			ordersdao.UpdateOrderStatus(ele.getOrderid());
 		}
 		
-		filehandling.savedata("Order.dta", orderscollection);
-		if(nopending) System.out.println("No Pending Orders To Delevery !");
 	}
 	
 	
 	
 	
 	
-	//----------------------------------------viewAllPendingOrders
-	public void viewAllPendingOrders() {
-		boolean nopending=true;
-		for(Order ele:orderscollection) {
-			if(ele.getStatus().equals(OrderStatus.ORDERED)) {
-				nopending=false;
-				System.out.println("Order Id : "+ele.getOrderid());
-				System.out.println("User Id : "+ele.getUserid());
-				System.out.println("Order Date : "+ele.getOrderdate());
-				
-				for(OrderItems e:ele.getOrderitems()) {
-					System.out.println("Product Name : "+e.getProductname());
-					System.out.println(" Price : "+e.getPrice());
-					System.out.println("Quantity : "+e.getQuantity());
-					System.out.println("Sub Total : "+e.getQuantity()*e.getPrice());
-				}
-			}
+	//----------------------------------------viewAllOrdersByStatus
+	public void viewAllOrdersByStatus() throws SQLException {
+		
+		
+		System.out.println("1 - PENDING");
+		System.out.println("2 - DELIVERED");
+		System.out.println("3 - SHIPPED");
+		System.out.println("4 - CONFIRMED");
+		OrderStatus status = null;
+		System.out.println("enter your Option : ");
+		int option=Integer.parseInt(sc.nextLine());
+		
+		switch(option) {
+		case 1: {
+			status=OrderStatus.PENDING;
+			break;
+		}
+		case 2: {
+			status=OrderStatus.DELIVERED;
+			break;
+		}case 3:{
+			status=OrderStatus.SHIPPED;
+			break;
+		}
+		case 4:{
+			status=OrderStatus.CONFIRMED;
+			break;
+		}
+		default :{
+			System.out.println("enter In Valid Option");
+		}
 		}
 		
-		if(nopending) System.out.println("No Pending Oders");
+		Optional<List<OrderItemsDTOs>> orderitems=ordersdao.GetOrdersByStatus(status);
+		int TotalAmount=0;
+		
+		
+		
+		if(orderitems.isEmpty()) {
+			System.out.println(" No Pending Oders ! ");
+			return;
+		}
+		
+		 for (OrderItemsDTOs e : orderitems.get()) {
+	            System.out.println();
+	            System.out.println("--------------------------------------");
+	            System.out.println(" Order ID      : " + e.getOrderid());
+	            System.out.println(" Order Status  : " + e.getStatus());
+	            System.out.println("--------------------------------------");
+	                System.out.println(" Product Name  : " + e.getProductname());
+	                System.out.println(" Price         : ₹" + e.getPrice());
+	                System.out.println(" Quantity      : " + e.getQuantity());  
+	                System.out.println("-----------------------------------");
+	                System.out.println("Total Amount : "+e.getPrice()* e.getQuantity());
+	                System.out.println("----------------------------------------");
+					TotalAmount+=e.getQuantity()*e.getPrice();
+				System.out.println("--------------------------------------------------");
+	            
+	        
+	    }
+	System.out.println("----------------------------------------");
+ System.out.println("Total Amount : "+ TotalAmount);
+	
 	}
-	
-	
-	
+
 	
 	
 	
 	//-------------------------generateid
 	public int generateid() {
-		if(orderscollection.size()==0) return 0;
-		return orderscollection.get(orderscollection.size()-1).getOrderid()+1;
+		 SecureRandom random = new SecureRandom();
+		    return random.nextInt(Integer.MAX_VALUE);
 	}
 	
 }

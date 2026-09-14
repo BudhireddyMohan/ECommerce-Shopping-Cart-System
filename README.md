@@ -430,3 +430,80 @@ Core Java | Java Backend Development | Spring Boot | MySQL
 ## 📄 License
 
 This project is created for learning and educational purposes.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+What i learned in this 
+jdbc - connection for backend and mysql , we install the connector-j (jar file) , we import it in the project right click on the project and building path - select the class path and import the external jar (connector-j)
+
+jdbc connection steps to follow 
+
+step -1
+Connection con=DriverManger.GetConnection(url,username,password);// it will return Connection object
+step -2
+       con   - Statement, Prepare Statement, Callable Statement (this return the objects back);   with that object we will set the values to the query
+step 3
+   ResultSet  rs=    executeUpdate, executeQuery, execute
+   
+ step 4
+   while(rs.next()){
+   map the objects 
+   }  
+   
+  step 5 - close the connections
+
+
+indexes - go to mysql and in users and products table check the indexes you will see
+    to execute the query faster , search the rows faster 
+    read in the note book , 
+    index uses the B-Tree internally
+    index maintain the order
+    
+DAos - Data Acessing objects . dtos are interfaces acts the bridge between the mysql execution (daos implementation) and services class  , all curd operations are operated here.  
+     
+joins- most importent thing we have the multiple tables like cart,  cartitems .  when we want the data from multiple table we use the joins .
+        By Using joins,  calls to the database will reduces and  appilcation will scallable 
+ 
+** Transcations **  (CURD)
+    if one operation is going on like
+    User Ordered product 
+      1- create the order row (save(orderid,orderstatus,....etc)) --create in mysal c- in curd operations
+       2- products should add  to orderitems in db
+       3-  delete the cart items 
+       4 - delete cart 
+    there are 4 operations in performing in the db
+    in case if it fail in the 3 or 4 stage the changes in the database , should not be done we roll back
+    
+    - commit true/fase
+    before starting the transncation we make the commit false 
+   - roll back 
+       undo type 
+       -- save point 
+           it rolback to the spefic point (upto to where you wanted to roll back)
+           
+ * Manuall Injuction dependency
+ 
+    we create the Application context class for creating the objects and do manually injucation 
+    when the starting the application it will create the object for the Application Context class, it will go it the class 
+    create the objects in injucation dependency way - see the application class you will understand the dependency injucation 
+
+    
+       
+ 
+
+
+

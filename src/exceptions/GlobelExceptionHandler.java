@@ -7,7 +7,7 @@ public class GlobelExceptionHandler {
 		
 		
 		System.out.println("Global handler: " + e.getMessage());
-		
+		e.printStackTrace();
 		
 	}
 	}
