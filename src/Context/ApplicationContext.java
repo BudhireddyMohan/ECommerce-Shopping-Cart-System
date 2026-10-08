@@ -1,4 +1,5 @@
 package Context;
+import Async_Programming_Layer.ExecutorServices;
 import Repository.DAOimplement.CartDAOimp;
 import Repository.DAOimplement.OrdersDAOimpl;
 import Repository.DAOimplement.ProductsDAOimp;
@@ -11,18 +12,26 @@ import exceptions.GlobelExceptionHandler;
 import menus.Adminmenu;
 import menus.Usermenu;
 import services.CartServices;
+import services.EmailService;
 import services.OrderServices;
 import services.ProductsServices;
 import services.UserServices;
 
 
 public class ApplicationContext {
+	
+	
+	
 
+	public static ApplicationContext instance;
+	
+	
+	
 	CartServices cartservices;
 	OrderServices orderservices;
 	ProductsServices productservices;
 	UserServices userservices; 
-
+	ExecutorServices serviceexecutor;
 	Usermenu usermenu;
 	Adminmenu adminmenu;
 	GlobelExceptionHandler globalhandler;
@@ -30,28 +39,41 @@ public class ApplicationContext {
 	DatabaseTest database;
 	ProductsDAO productsDAo;
 	CartDAO cartDao;
-//	Cart_itemsDAos cart_itemdao;
+	EmailService emailservice;
 	OrdersDAO ordersdao;
-	//Order_itemsDAO order_itemsdao;
 	
-	public ApplicationContext(){
+	
+	
+	private ApplicationContext(){
 		
 		
 		this.globalhandler=new GlobelExceptionHandler();
-	
+	    this.serviceexecutor=new ExecutorServices();
+	    this.emailservice=new EmailService();
 		this.database=new DatabaseTest();
 		this.productsDAo=new ProductsDAOimp(database);
 		this.productservices=new ProductsServices(globalhandler,productsDAo);
 		this.cartDao=new CartDAOimp(database);
 		this.ordersdao=new OrdersDAOimpl(database);
-		//this.order_itemsdao=new Order_Items_DAOimp(database);
-		//this.cart_itemdao=new Cart_itemsDAosimp(database);
+     //    this.adminservices=new AdimServices(database);
 		this.cartservices=new  CartServices(productservices,productsDAo,cartDao,database);
-		this.orderservices=new OrderServices(productservices,cartservices,globalhandler,ordersdao,database);
+		this.orderservices=new OrderServices(productservices,cartservices,globalhandler,ordersdao,database,serviceexecutor,emailservice);
 		this.userDaoimp=new UserDAOimplements(database);
 		this.userservices =new UserServices(globalhandler,userDaoimp);
 		this.usermenu=new Usermenu(productservices,cartservices,orderservices,userservices);
 	    this.adminmenu=new Adminmenu(productservices,cartservices,orderservices,userservices);
+	}
+	
+	
+	
+	
+	
+	public static  ApplicationContext getinstance() {
+		if(instance==null) {
+			instance=new ApplicationContext();
+		}
+		
+		return instance;
 	}
 
 //	public CartServices getCartservices() {

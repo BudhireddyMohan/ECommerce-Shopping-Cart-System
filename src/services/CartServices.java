@@ -24,7 +24,7 @@ public class CartServices{
    
    
    
-   //------------objects 
+   //---------------------------------------------objects 
    
    
    Scanner sc=new Scanner(System.in);
@@ -34,16 +34,17 @@ public class CartServices{
    ProductsDAO productsDAo;
    CartDAO cartDao;
    Users currentuser; 
-  // Cart_itemsDAos cart_itemdao;
+ 
    DatabaseTest database;
-  
-public CartServices(ProductsServices productservice,ProductsDAO productsDAo,CartDAO cartDao, DatabaseTest database) {
+
+   
+   public CartServices(ProductsServices productservice,ProductsDAO productsDAo,CartDAO cartDao, DatabaseTest database) {
   
 	this.productsservices=productservice;
 	this.productsDAo=productsDAo;
 	this.cartDao=cartDao;
 	this.database= database;
-	//this.cart_itemdao= cart_itemdao;
+	
 }
 
 
@@ -82,6 +83,8 @@ public void AddProducttoCart(Users currentuser) throws SQLException,InCorrectPro
 	      Optional<List<CartProductDTO>> cartitems= cartDao.GetCartProduct(currentuser.getUserid());
       
 	      // if user_id does not contain IN Cart TABLE 
+	      
+	      
 	      Connection con=null;
 	       try{
 	    	    con= database.getconnection();
@@ -286,12 +289,8 @@ public void AddProducttoCart(Users currentuser) throws SQLException,InCorrectPro
    }
    
     
-   
-// //----------------------Get Cart 
-//   public Optional<Cart> GetCart(int userid) throws SQLException {
-//	   return  cartDao.GetCart(userid);
-//   }
-//   
+  
+  
    
  //-----------------  generateid
    public int generateid() {
@@ -300,14 +299,7 @@ public void AddProducttoCart(Users currentuser) throws SQLException,InCorrectPro
 	}
    
    
-   
-   
- //---------- Get CartItems
-   
-//   public Optional<List<CartItems>> GetCartItems(int cartid) throws SQLException{
-//	   return cartDao.GetCartItems(cartid);
-//   }
-//   
+  
    public void DeleteCart_Items(Connection con,int cartid,int productid) throws SQLException {
 	   cartDao.DeleteByCartIdByProductId(con, cartid, productid);
    }

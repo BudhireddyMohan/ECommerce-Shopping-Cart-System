@@ -95,8 +95,12 @@ public class Adminmenu {
                         orderservices.viewAllOrdersByStatus();
                         break;
                     }
+                    case 11:{
+                    	orderservices.DailyReport();
+                    	break;
+                    }
 
-                    case 11: {
+                    case 12: {
                         flag = false;
                         break;
                     }
@@ -139,7 +143,8 @@ public class Adminmenu {
                 + "8. View Order Details\r\n"
                 + "9. Develery All Pending Orders\r\n"
                 + "10. view All Pending Orders\r\n"
-                + "11. Logout\r\n"
+                +"11. Today Total Report\r\n"
+                + "12. Logout\r\n"
                 + "Enter Choice:"
         );
     }

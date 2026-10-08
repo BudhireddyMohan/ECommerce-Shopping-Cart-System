@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Scanner;
 
+import Async_Programming_Layer.ExecutorServices;
 import DTOs.AddToCartDto;
 import DTOs.OrderItemsDTOs;
 import Repository.DAOs.OrdersDAO;
@@ -25,9 +26,7 @@ public class OrderServices {
 
 	
 	LocalDate today = LocalDate.now();
-	 
-	
-	
+
 	
 	//------------------objects
 
@@ -38,16 +37,22 @@ public class OrderServices {
 	Users currentuser;
 	OrdersDAO ordersdao;
 	DatabaseTest database;
-	//Order_itemsDAO order_itemsdao;
+	ExecutorServices serviceexecutor;
+	EmailService emailservice;
 	
-	public OrderServices(ProductsServices productservice, CartServices cartservices,GlobelExceptionHandler exceptionhandler,OrdersDAO ordersdao,DatabaseTest database) {
+	
+	
+	public OrderServices(ProductsServices productservice, CartServices cartservices
+			,GlobelExceptionHandler exceptionhandler,OrdersDAO ordersdao,DatabaseTest database,ExecutorServices serviceexecutor,EmailService emailservice) {
 		this.productservices=productservice;
 		this.cartservices=cartservices;
-	
-	
+	   this.serviceexecutor=serviceexecutor;
+	   this.emailservice=emailservice;
+	   this.database=database;
 		this.exceptionhandler=exceptionhandler;
-		//this.order_itemsdao=order_itemsdao;
 		this.ordersdao=ordersdao;
+		
+		
 		}
 	
 	
@@ -60,50 +65,68 @@ public class OrderServices {
 		System.out.println("==============Place order===============");
 		
 		// show cartItems To User
-		cartservices.ViewCart(currentuser);
-		
-		
-		
-		
-		Optional<List<AddToCartDto>> cartitems=ordersdao.Addtocart(currentuser.getUserid());
-		
-		if(cartitems.isEmpty()) {System.out.println("To Place Order ! OOPs");return;}
-		
-
-		
+		cartservices.ViewCart(currentuser);		
 		//checking the stock is valid in products stock and cart stock
 		
-		for(AddToCartDto ele: cartitems.get()) {
-			
-		
-			if(ele.ciquantity()>ele.p_stock()) {
-				throw new InSuffecentStock("Stock is Insuffent to Place The Order");
-			}
-		}
-		
-		
-		
-		
-
-		System.out.println("Are U Sure To Place Order ?");
-		System.out.println("1. Yes");
-		System.out.println("2. No");
-		int option= Integer.parseInt(sc.nextLine());
-	
-		while(option!=1 && option!=2) {
-			System.out.println("enter correct option : ");
-			 option= Integer.parseInt(sc.nextLine());
-		}
-		
-		if(option==2) return;
-		
-		int order_id=generateid();
 		
 		Connection con=null;
 		try {
-		    con=database.getconnection();
-		    if(con==null) throw new DataBaseConnection("data base connection error");
+			con=database.getconnection();
+			if(con==null) {
+				  throw new DataBaseConnection("data base connection error");
+			  }
+			
+			Optional<List<AddToCartDto>> cartitems=ordersdao.Addtocart(con,currentuser.getUserid());
+
+			if(cartitems.isEmpty()) {System.out.println("No Cart To Place Order ! OOPs");return;}
+			   synchronized(this) {
+					
+					for(AddToCartDto ele: cartitems.get()) {
+						
+						
+						//ordersdao.locking_Products_Row(con,ele.p_productid());
+                        
+						if(ele.ciquantity()>ele.p_stock()) {
+							throw new InSuffecentStock("Stock is Insuffent to Place The Order");
+						}
+						
+						if(ele.p_stock()<10) {
+                        	serviceexecutor.getNewthreadservice().execute(()->emailservice.SendRedAlertStockIsLow("mohanbudhiress", ele.p_productid(), ele.p_stock()));
+						}
+							
+					}}
+					
+			System.out.println("Are U Sure To Place Order ?");
+			System.out.println("1. Yes");
+			System.out.println("2. No");
+			int option= Integer.parseInt(sc.nextLine());
+		
+			while(option!=1 && option!=2) {
+				System.out.println("enter correct option : ");
+				 option= Integer.parseInt(sc.nextLine());
+			}
+			
+			if(option==2) return;
+			
+			
 			con.setAutoCommit(false);
+			
+			  
+		
+		   synchronized(this) {
+			
+			for(AddToCartDto ele: cartitems.get()) {
+				
+				ordersdao.locking_Products_Row(con,ele.p_productid());
+				if(ele.ciquantity()>ele.p_stock()) {
+					throw new InSuffecentStock("Just A moment stock is ordered by Another person");
+				}
+					
+			}
+		}
+	
+		int order_id=generateid();
+	
 			//Adding the Order in the Orders Table
 			ordersdao.save(con,order_id,currentuser.getUserid(),LocalDateTime.now(),OrderStatus.PENDING);
 		
@@ -122,8 +145,10 @@ public class OrderServices {
 			}
 			
 			// After the user ordered the cart will deleted
+			
 			cartservices.Deletecart(con,currentuser.getUserid());
 			
+			serviceexecutor.getNewthreadservice().execute(()->emailservice.sendemail("mohanbudhireddy2004@gmail.com","orderPlaced Sucessfully"));
 			
 			
 			
@@ -132,21 +157,22 @@ public class OrderServices {
 			System.out.println("=================================================");	
 					
 		}catch(Exception e) {
-			if(con !=null) {
+			if(!con.isClosed()) {
 				con.rollback();
 			}
 			throw e;
 		}finally{
 			try {
-				if(con!=null) {
+				if(!con.isClosed()) {
 					con.setAutoCommit(true);
+					con.close();
 				}
 			}catch(Exception e) {
 				e.printStackTrace();
 			}
-			con.close();
+			
 		}
-		
+			
 		
 	}
 	
@@ -365,6 +391,114 @@ public class OrderServices {
 	}
 
 	
+	//--------------------Cancel Order
+	 public void CancelOrder(Users currentuser) throws SQLException,DataBaseConnection{
+		   this.currentuser=currentuser;
+		   
+		   Optional<List<OrderItemsDTOs>> orderitems=ordersdao.GetOrdersByStatus(OrderStatus.PENDING);
+		   if(orderitems.isEmpty()) throw new CartIsEmpty("No Pending orders Yet !");
+		   
+		   int TotalAmount=0;
+		   
+		   for (OrderItemsDTOs e : orderitems.get()) {
+	            System.out.println();
+	            System.out.println("--------------------------------------");
+	            System.out.println(" Order ID      : " + e.getOrderid());
+	            System.out.println(" Order Status  : " + e.getStatus());
+	            System.out.println("--------------------------------------");
+	                System.out.println(" Product Name  : " + e.getProductname());
+	                System.out.println(" Price         : ₹" + e.getPrice());
+	                System.out.println(" Quantity      : " + e.getQuantity());  
+	                System.out.println("-----------------------------------");
+	                System.out.println("Total Amount : "+e.getPrice()* e.getQuantity());
+	                System.out.println("----------------------------------------");
+					TotalAmount+=e.getQuantity()*e.getPrice();
+				System.out.println("--------------------------------------------------"); 
+	    }
+		   
+		   
+//		   System.out.println("Enter the Order id to Delete the Order ");
+//		   
+		  // int orderid;
+//		   
+		   
+		   boolean orderexits=false;
+			  System.out.println("Enter correct Orderid :");
+			 int   orderid=Integer.parseInt(sc.nextLine());
+			 for(OrderItemsDTOs ele: orderitems.get()) {
+				   if(ele.getOrderid()==orderid) {
+					   orderexits=true;
+					   break;
+				   }}
+		   
+		   while(!orderexits) {
+			  System.out.println("Enter correct Orderid :");
+			   orderid=Integer.parseInt(sc.nextLine());
+			   for(OrderItemsDTOs ele1: orderitems.get()) {
+				   if(ele1.getOrderid()==orderid) {
+					   orderexits=true;
+					   break;
+				   }
+			   }   
+		   }
+		   
+		   
+		   Connection con=null;
+		   try {
+			   
+			   con=database.getconnection();
+			   if(con==null)  throw new  DataBaseConnection("Failed at connection the database");
+			   
+			   
+			   con.setAutoCommit(false);
+ 
+			   // deleting the order id , it will delete the orderitems internally beacuse cascading
+			   ordersdao.DelectByOrderid(con, orderid);
+			   con.commit();
+			   serviceexecutor.getNewthreadservice().execute(()->emailservice.sendemail("mohanBudhireddy2004@gmail.com","Order Canclled "));
+			   
+			   
+			   
+		   }catch(Exception e) {
+			   if(!con.isClosed()) {
+				   con.rollback();
+			   }
+			   throw e;
+			   
+		   }finally {
+			   try {
+				   if(!con.isClosed()) {
+					   con.setAutoCommit(true);
+					   con.close();
+				   }
+			   }catch(Exception e) {
+				   e.printStackTrace();
+			   }
+			  
+		   }
+	   }
+	 
+	 
+	 //---------------------DailyReport
+	 
+	 public void DailyReport()  {
+		 
+		serviceexecutor.getNewthreadservice().submit(()->{
+			try {
+				int total= ordersdao.SalesOfDay();
+				System.out.println("total sale = "+total);
+			}catch(Exception e) {
+				e.printStackTrace();}
+		});
+		
+		
+	 }
+		
+	 
+	 
+	 
+	 
+	 
 	
 	
 	//-------------------------generateid

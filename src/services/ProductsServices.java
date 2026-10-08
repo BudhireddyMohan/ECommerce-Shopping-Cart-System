@@ -209,6 +209,9 @@ public class ProductsServices {
 	
 	
 	public void ViewAllProducts() throws SQLException{
+		
+		
+		
 	System.out.println("========================================\r\n"
 			+ "             ALL PRODUCTS\r\n"
 			+ "========================================");	

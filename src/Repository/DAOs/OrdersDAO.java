@@ -15,11 +15,7 @@ public interface OrdersDAO {
 
 	public void save(Connection con,int orderid,int userid, LocalDateTime OrderDatetime,OrderStatus status) throws SQLException;
 	
-	//public Optional<List<Order>> GetOrderByUserID(int userid) throws SQLException;
 	
-	//public Optional<List<Order>> GetOrderByOrderId(int orderid) throws SQLException;
-	
-	//public  Optional<List<Order>> GetAllOrders()throws SQLException;
 	
 	public Optional<List<OrderItemsDTOs>> GetOrdersByStatus(OrderStatus status) throws SQLException;
 	
@@ -29,7 +25,15 @@ public interface OrdersDAO {
 	
 	public Optional<List<OrderItemsDTOs>> GetAllOrders() throws SQLException;
 	
-	public Optional<List<AddToCartDto>> Addtocart(int userid) throws SQLException;
+	public Optional<List<AddToCartDto>> Addtocart(Connection con,int userid) throws SQLException;
 	public void save(Connection con,int order_items_id,int orderid,String productname,int price , int quantity) throws SQLException;
+	
+	
+	public void locking_Products_Row(Connection con,int productid) throws SQLException;
+	
+	
+	public void DelectByOrderid(Connection con,int orderid) throws SQLException;
+	
+	public int SalesOfDay() throws SQLException;
 	
 }

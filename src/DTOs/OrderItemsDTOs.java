@@ -9,10 +9,17 @@ public class OrderItemsDTOs {
 	private String productname;
 	private int price;
 	private int quantity;
+	private int productid;
 	
 	
 	
 	
+	public int getProductid() {
+		return productid;
+	}
+	public void setProductid(int productid) {
+		this.productid = productid;
+	}
 	public int getOrderid() {
 		return orderid;
 	}
@@ -50,12 +57,14 @@ public class OrderItemsDTOs {
 		this.productname = productname;
 		this.price = price;
 		this.quantity = quantity;
+	
 	}
 	@Override
 	public String toString() {
 		return "OrderItemsDTOs [orderid=" + orderid + ", status=" + status + ", productname=" + productname + ", price="
-				+ price + ", quantity=" + quantity + "]";
+				+ price + ", quantity=" + quantity +  "]";
 	}
+
 	
 	
 	

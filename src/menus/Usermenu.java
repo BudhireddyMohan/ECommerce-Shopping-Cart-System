@@ -77,6 +77,10 @@ public class Usermenu {
 		                    cartservices.RemoveProductfromCart(currentuser);
 		                    break;
 		                }
+		                case 6: {
+		                	orderservices.CancelOrder(currentuser);
+		                    break;
+		                }
 
 		                case 7: {
 		                    orderservices.placeorder(currentuser);
@@ -124,7 +128,7 @@ public class Usermenu {
 				+ "3. Add Product to Cart\r\n"
 				+ "4. View Cart\r\n"
 				+ "5. Remove Product from Cart\r\n"
-				//+ "6. Update Cart Quantity\r\n"
+				+ "6. Cancel Any Order\r\n"
 				+ "7. Place Order\r\n"
 				+ "8. Order History\r\n"
 				+ "9. My Profile\r\n"

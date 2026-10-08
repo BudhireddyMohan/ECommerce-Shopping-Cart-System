@@ -19,6 +19,11 @@ public class ECommerceShopping {
     }
 
     public static void main(String[] args) {
+    	
+    	
+    	
+    	
+    	
     	// 1. Wrap the original system input stream so close() commands are completely ignored
     	java.io.InputStream uncloseableInputStream = new java.io.FilterInputStream(System.in) {
     	    @Override
@@ -34,8 +39,7 @@ public class ECommerceShopping {
         GlobelExceptionHandler g = new GlobelExceptionHandler();
 
         // Objects
-        ApplicationContext objectcontainer =
-                new ApplicationContext();
+        ApplicationContext objectcontainer =  ApplicationContext.getinstance();
 
         // Application started
         Scanner sc = new Scanner(System.in);

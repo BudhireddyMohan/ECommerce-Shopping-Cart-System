@@ -43,8 +43,7 @@ public class OrdersDAOimpl implements OrdersDAO{
 		else {
 			System.out.println("data not saved to orders table in DB");
 		}
-		ps.close();
-		con.close();
+		
 		
 	}
 
@@ -62,8 +61,7 @@ public class OrdersDAOimpl implements OrdersDAO{
 		while(rs.next()) {
 			orders.add(new OrderItemsDTOs(rs.getInt(1),OrderStatus.valueOf(rs.getString(2)),rs.getString(3),rs.getInt(4),rs.getInt(5)));
 		}
-		st.close();
-		con.close();
+		
 		
 		 if(orders.size()==0) return Optional.empty();
 		 return Optional.of(orders);
@@ -87,8 +85,7 @@ public class OrdersDAOimpl implements OrdersDAO{
 			a.add(new OrderItemsDTOs(rs.getInt(1),OrderStatus.valueOf(rs.getString(2)),rs.getString(3),rs.getInt(4),rs.getInt(5)));
 		}
 		if(a.size()==0) return Optional.empty();
-		ps.close();
-		con.close();
+		
 		return Optional.of(a);
 		
 	}
@@ -107,8 +104,7 @@ public class OrdersDAOimpl implements OrdersDAO{
 		else {
 			System.out.println("Order status Not Changed to delivered in Db");
 		}
-		ps.close();
-		con.close();
+		
 
 	}
 
@@ -137,8 +133,6 @@ public class OrdersDAOimpl implements OrdersDAO{
 		if(orderitems.isEmpty()) {
 			return Optional.empty();
 		}
-		ps.close();
-		con.close();
 		return Optional.of(orderitems) ;
 	}
 
@@ -146,8 +140,8 @@ public class OrdersDAOimpl implements OrdersDAO{
 
 
 	@Override
-	public Optional<List<AddToCartDto>> Addtocart(int userid) throws SQLException {
-		Connection con=database.getconnection();
+	public Optional<List<AddToCartDto>> Addtocart(Connection con,int userid) throws SQLException {
+		//Connection con=database.getconnection();
 		String query="select c.cart_id,ci.quantity,ci.product_id,p.product_id,p.productname,p.price,p.stock from cart c inner join cart_items ci on c.cart_id=ci.cart_id inner join products p on p.product_id=ci.product_id where user_id=? ;";
 		PreparedStatement ps=con.prepareStatement(query);
 		ps.setInt(1, userid);
@@ -157,12 +151,9 @@ public class OrdersDAOimpl implements OrdersDAO{
 		while(rs.next()) {
 			a.add(new AddToCartDto(rs.getInt(1),rs.getInt(2),rs.getInt(3),rs.getInt(4),rs.getString(5),rs.getInt(6),rs.getInt(7)));
 		}
-		ps.close();
-		con.close();
+		
 		return a.isEmpty() ? Optional.empty() : Optional.of(a);
-		
-		
-		
+	
 	}
 
 
@@ -185,6 +176,57 @@ public class OrdersDAOimpl implements OrdersDAO{
 			System.out.println("Data i not inserted into order_items DB");
 		}
 		
+	}
+
+
+
+
+	@Override
+	public void locking_Products_Row(Connection con, int productid) throws SQLException {
+		String query= "select * from products where product_id=? for update ;";
+		
+		PreparedStatement ps=con.prepareStatement(query);
+		ps.setInt(1, productid);
+		
+		 System.out.println(ps.execute() ? " rows Locked sucessfullly":"row locked fail"); 
+		
+	}
+
+
+
+
+	@Override
+	public void DelectByOrderid(Connection con,int orderid) throws SQLException {
+	   String Query=" delete from `order` where order_id=?; ";
+	   
+	   PreparedStatement ps=con.prepareStatement(Query);
+	   ps.setInt(1, orderid);
+	  if( ps.executeUpdate()>=1) {
+		  System.out.println("deleted the order and orderitems in the DB By Cascding");
+	  }else {
+		  System.out.println("error at the deleting the order and orderitems using the cascading");
+	  }
+	   
+	   
+		
+	}
+
+
+
+
+	@Override
+	public int SalesOfDay() throws SQLException {
+		
+		Connection con=database.getconnection();
+	   Statement st=	con.createStatement();
+		String Query="select sum(oi.price)  from `order` o left join order_items oi on o.order_id=oi.order_id   where   date(orderdate)  =current_date()   ;"; 
+		ResultSet rs= st.executeQuery(Query);
+		int total=0;
+	while(rs.next()) {
+		total=rs.getInt(1);
+	}
+		
+		return total;
 	}
 	
 	
